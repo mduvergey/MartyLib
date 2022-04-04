@@ -6,17 +6,20 @@ namespace Marty
     {
         public static T Instance { get; private set; } = null;
 
-        protected virtual void Awake()
+        private void Awake()
         {
-            if (Instance == null)
-            {
-                Instance = (T)this;
-                DontDestroyOnLoad(gameObject);
-            }
-            else
+            if ((Instance != null) && (Instance != this))
             {
                 Destroy(gameObject);
             }
+            else
+            {
+                Instance = (T)this;
+                DontDestroyOnLoad(gameObject);
+                OnAwake();
+            }
         }
+
+        protected virtual void OnAwake() { }
     }
 }
