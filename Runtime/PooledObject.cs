@@ -19,7 +19,14 @@ namespace Marty
 
         public void ReturnToPool()
         {
-            ObjectPool.ReturnObjectToPool(gameObject);
+            if (ObjectPool != null)
+            {
+                ObjectPool.ReturnObjectToPool(gameObject);
+            }
+            else
+            {
+                Debug.LogError("Object pool not set. Unable to return pooled object.");
+            }
         }
     }
 }
