@@ -3,94 +3,86 @@ using UnityEngine;
 
 namespace Marty
 {
-    public class ObjectPool : MonoBehaviour
+    public class ObjectPool<T> where T : MonoBehaviour
     {
-        [SerializeField] private GameObject prefab = null;
-        [Tooltip("Will be adjusted if value is greater than Max Pool Size.")]
-        [SerializeField, Min(0)] private int initialPoolSize = 10;
-        [Tooltip("Set value to 0 to disable size limit.")]
-        [SerializeField, Min(0)] private int maxPoolSize = 0;
-        [Space]
-        [Tooltip("Optional transform that will be used as parent for pooled objects instead of the transform of this object.")]
-        [SerializeField] private Transform parentTransform = null;
-        [Tooltip("Ensure a PooledObject component is present on every pooled object.")]
-        [SerializeField] private bool addPooledObjectComponent = false;
+        private Stack<T> pool;
+        private T original;
+        private int maxPoolSize;
+        private System.Action<T> onCreate;
+        private System.Action<T> onRecycle;
+        private Transform parent;
 
-        private Stack<GameObject> pool = new Stack<GameObject>();
-
-        private void Awake()
+        public ObjectPool(T original, int maxPoolSize = 0,
+            System.Action<T> onCreate = null, System.Action<T> onRecycle = null, Transform parent = null)
         {
-            if ((maxPoolSize > 0) && (initialPoolSize > maxPoolSize))
+            pool = new Stack<T>();
+            this.original = original;
+            this.maxPoolSize = maxPoolSize;
+            this.onCreate = onCreate;
+            this.onRecycle = onRecycle;
+            this.parent = parent;
+        }
+
+        public void PreSpawnObjects(int count)
+        {
+            if ((maxPoolSize > 0) && (count + pool.Count > maxPoolSize))
             {
-                initialPoolSize = maxPoolSize;
+                count = maxPoolSize - pool.Count;
             }
 
-            if (prefab != null)
+            for (int i = 0; i < count; i++)
             {
-                for (int i = 0; i < initialPoolSize; i++)
-                {
-                    GameObject go = SpawnObject();
-                    go.SetActive(false);
-                    pool.Push(go);
-                }
-            }
-            else
-            {
-                Debug.LogError("Missing prefab. Object pool will not be able to spawn objects.");
+                T pooledObject = SpawnObject();
+                pooledObject.gameObject.SetActive(false);
+                pool.Push(pooledObject);
             }
         }
 
-        public GameObject GetObjectFromPool()
+        public T GetObjectFromPool()
         {
-            GameObject go;
+            T pooledObject;
             if (pool.Count > 0)
             {
-                go = pool.Pop();
-                go.SetActive(true);
+                pooledObject = pool.Pop();
+                onRecycle?.Invoke(pooledObject);
+                pooledObject.gameObject.SetActive(true);
             }
             else
             {
-                go = SpawnObject();
+                pooledObject = SpawnObject();
             }
-            return go;
+            return pooledObject;
         }
 
-        public void ReturnObjectToPool(GameObject go)
+        public void ReturnObjectToPool(T pooledObject)
         {
             if ((maxPoolSize > 0) && (pool.Count == maxPoolSize))
             {
-                Destroy(go);
-            }
-            else if (!pool.Contains(go))
-            {
-                go.SetActive(false);
-                pool.Push(go);
-            }
-        }
-
-        private GameObject SpawnObject()
-        {
-            GameObject go;
-
-            if (parentTransform != null)
-            {
-                go = Instantiate(prefab, parentTransform);
+                Object.Destroy(pooledObject.gameObject);
             }
             else
             {
-                go = Instantiate(prefab, transform);
+                pooledObject.gameObject.SetActive(false);
+                pool.Push(pooledObject);
+            }
+        }
+
+        private T SpawnObject()
+        {
+            GameObject go;
+
+            if (parent != null)
+            {
+                go = Object.Instantiate(original.gameObject, parent);
+            }
+            else
+            {
+                go = Object.Instantiate(original.gameObject);
             }
 
-            if (go.TryGetComponent<PooledObject>(out PooledObject pooledObject))
-            {
-                pooledObject.ObjectPool = this;
-            }
-            else if (addPooledObjectComponent)
-            {
-                go.AddComponent<PooledObject>().ObjectPool = this;
-            }
-
-            return go;
+            T obj = go.GetComponent<T>();
+            onCreate?.Invoke(obj);
+            return obj;
         }
     }
 }
