@@ -1,27 +1,35 @@
+using System;
 using System.Collections.Generic;
-using UnityEngine;
 
 namespace Marty
 {
-    public class ObjectPool<T> where T : Component
+    public class ObjectPool<T>
     {
         private Stack<T> pool;
-        private T original;
+        private T template;
         private int maxPoolSize;
-        private System.Action<T, ObjectPool<T>> onCreate;
-        private System.Action<T> onRecycle;
-        private Transform parent;
+        protected Func<T> createFunc;
+        protected Action<T> onGet;
+        protected Action<T> onRecycle;
+        protected Action<T> onReturn;
+        protected Action<T> onDestroy;
 
-        public ObjectPool(T original, int maxPoolSize = 0,
-            System.Action<T, ObjectPool<T>> onCreate = null,
-            System.Action<T> onRecycle = null, Transform parent = null)
+        public ObjectPool(T template,
+            Func<T> createFunc,
+            int maxPoolSize = 0,
+            Action<T> onRecycle = null,
+            Action<T> onGet = null,
+            Action<T> onReturn = null,
+            Action<T> onDestroy = null)
         {
             pool = new Stack<T>();
-            this.original = original;
+            this.template = template;
+            this.createFunc = createFunc;
             this.maxPoolSize = maxPoolSize;
-            this.onCreate = onCreate;
             this.onRecycle = onRecycle;
-            this.parent = parent;
+            this.onGet = onGet;
+            this.onReturn = onReturn;
+            this.onDestroy = onDestroy;
         }
 
         public void PreSpawnObjects(int count)
@@ -33,57 +41,40 @@ namespace Marty
 
             for (int i = 0; i < count; i++)
             {
-                T pooledObject = SpawnObject();
-                pooledObject.gameObject.SetActive(false);
-                pool.Push(pooledObject);
+                T obj = createFunc();
+                pool.Push(obj);
             }
         }
 
         public T GetObjectFromPool()
         {
-            T pooledObject;
+            T obj;
+
             if (pool.Count > 0)
             {
-                pooledObject = pool.Pop();
-                onRecycle?.Invoke(pooledObject);
-                pooledObject.gameObject.SetActive(true);
+                obj = pool.Pop();
+                onRecycle?.Invoke(obj);
             }
             else
             {
-                pooledObject = SpawnObject();
+                obj = createFunc();
             }
-            return pooledObject;
+
+            onGet?.Invoke(obj);
+            return obj;
         }
 
-        public void ReturnObjectToPool(T pooledObject)
+        public void ReturnObjectToPool(T obj)
         {
             if ((maxPoolSize > 0) && (pool.Count == maxPoolSize))
             {
-                Object.Destroy(pooledObject.gameObject);
+                onDestroy?.Invoke(obj);
             }
             else
             {
-                pooledObject.gameObject.SetActive(false);
-                pool.Push(pooledObject);
+                onReturn?.Invoke(obj);
+                pool.Push(obj);
             }
-        }
-
-        private T SpawnObject()
-        {
-            GameObject go;
-
-            if (parent != null)
-            {
-                go = Object.Instantiate(original.gameObject, parent);
-            }
-            else
-            {
-                go = Object.Instantiate(original.gameObject);
-            }
-
-            T obj = go.GetComponent<T>();
-            onCreate?.Invoke(obj, this);
-            return obj;
         }
     }
 }
