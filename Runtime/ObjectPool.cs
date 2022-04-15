@@ -3,17 +3,18 @@ using UnityEngine;
 
 namespace Marty
 {
-    public class ObjectPool<T> where T : MonoBehaviour
+    public class ObjectPool<T> where T : Component
     {
         private Stack<T> pool;
         private T original;
         private int maxPoolSize;
-        private System.Action<T> onCreate;
+        private System.Action<T, ObjectPool<T>> onCreate;
         private System.Action<T> onRecycle;
         private Transform parent;
 
         public ObjectPool(T original, int maxPoolSize = 0,
-            System.Action<T> onCreate = null, System.Action<T> onRecycle = null, Transform parent = null)
+            System.Action<T, ObjectPool<T>> onCreate = null,
+            System.Action<T> onRecycle = null, Transform parent = null)
         {
             pool = new Stack<T>();
             this.original = original;
@@ -81,7 +82,7 @@ namespace Marty
             }
 
             T obj = go.GetComponent<T>();
-            onCreate?.Invoke(obj);
+            onCreate?.Invoke(obj, this);
             return obj;
         }
     }
