@@ -1,30 +1,22 @@
+using System;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace Marty
 {
     public class ComponentPool<T> : ObjectPool<T> where T : Component
     {
         public ComponentPool(T template, int maxPoolSize = 0,
-            System.Action<T> onCreate = null,
-            System.Action<T> onRecycle = null,
-            System.Action<T> onGet = null,
-            System.Action<T> onReturn = null,
-            System.Action<T> onDestroy = null,
+            Action<T> onCreate = null,
+            Action<T> onRecycle = null,
+            Action<T> onGet = null,
+            Action<T> onReturn = null,
+            Action<T> onDestroy = null,
             Transform parent = null) :
             base(template, null, maxPoolSize, onRecycle)
         {
             this.createFunc = () => {
-                T obj;
-
-                if (parent != null)
-                {
-                    obj = Object.Instantiate(template, parent);
-                }
-                else
-                {
-                    obj = Object.Instantiate(template);
-                }
-
+                T obj = Object.Instantiate(template, parent);
                 onCreate?.Invoke(obj);
                 obj.gameObject.SetActive(false);
                 return obj;
