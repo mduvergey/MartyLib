@@ -64,17 +64,29 @@ namespace Marty
             return obj;
         }
 
-        public void ReturnObjectToPool(T obj)
+        public bool ReturnObjectToPool(T obj)
         {
             if ((maxPoolSize > 0) && (pool.Count == maxPoolSize))
             {
                 onDestroy?.Invoke(obj);
+                return false;
             }
-            else
+
+            onReturn?.Invoke(obj);
+            pool.Push(obj);
+            return true;
+        }
+
+        public void Clear()
+        {
+            if (onDestroy != null)
             {
-                onReturn?.Invoke(obj);
-                pool.Push(obj);
+                foreach (T obj in pool)
+                {
+                    onDestroy.Invoke(obj);
+                }
             }
+            pool.Clear();
         }
     }
 }
