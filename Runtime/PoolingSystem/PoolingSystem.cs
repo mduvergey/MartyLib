@@ -8,7 +8,7 @@ namespace Marty
         public static PoolManager poolManager = null;
 
         private static Dictionary<GameObject, GameObjectPool> pools = new Dictionary<GameObject, GameObjectPool>();
-        private static Dictionary<GameObject, GameObjectPool> spawnedObjects = new Dictionary<GameObject, GameObjectPool>();
+        private static Dictionary<GameObject, GameObjectPool> activeObjects = new Dictionary<GameObject, GameObjectPool>();
 
         public static GameObjectPool CreatePool(GameObject template, int maxSize = 0,
             int preSpawnCount = 0, Transform parent = null)
@@ -51,10 +51,7 @@ namespace Marty
             if (pools.TryGetValue(template, out GameObjectPool pool))
             {
                 GameObject obj = pool.GetObjectFromPool();
-                if (!spawnedObjects.ContainsKey(obj))
-                {
-                    spawnedObjects.Add(obj, pool);
-                }
+                activeObjects.Add(obj, pool);
                 return obj;
             }
             return null;
@@ -72,12 +69,10 @@ namespace Marty
 
         public static bool ReturnObjectToPool(GameObject obj)
         {
-            if (spawnedObjects.TryGetValue(obj, out GameObjectPool pool))
+            if (activeObjects.TryGetValue(obj, out GameObjectPool pool))
             {
-                if (!pool.ReturnObjectToPool(obj))
-                {
-                    spawnedObjects.Remove(obj);
-                }
+                pool.ReturnObjectToPool(obj);
+                activeObjects.Remove(obj);
                 return true;
             }
             return false;
@@ -93,7 +88,7 @@ namespace Marty
             if (pools.TryGetValue(template, out GameObjectPool pool))
             {
                 List<GameObject> removeList = new List<GameObject>();
-                foreach (KeyValuePair<GameObject, GameObjectPool> kv in spawnedObjects)
+                foreach (KeyValuePair<GameObject, GameObjectPool> kv in activeObjects)
                 {
                     if (kv.Value == pool)
                     {
@@ -102,7 +97,7 @@ namespace Marty
                 }
                 foreach (GameObject key in removeList)
                 {
-                    spawnedObjects.Remove(key);
+                    activeObjects.Remove(key);
                 }
                 pool.Clear();
                 pools.Remove(template);
@@ -111,9 +106,40 @@ namespace Marty
 
         public static void Reset()
         {
-            spawnedObjects.Clear();
+            activeObjects.Clear();
             pools.Clear();
             poolManager = null;
+        }
+
+        [Oddworm.Framework.PlayModeInspectorMethod]
+        private static void PlayModeInspectorMethod()
+        {
+        #if UNITY_EDITOR
+            foreach (KeyValuePair<GameObject, GameObjectPool> kv in pools)
+            {
+                UnityEditor.EditorGUILayout.BeginHorizontal();
+
+                UnityEditor.EditorGUILayout.ObjectField(kv.Key, typeof(GameObject), false);
+
+                int activeCount = 0;
+                foreach (KeyValuePair<GameObject, GameObjectPool> kv2 in activeObjects)
+                {
+                    if (kv2.Value == kv.Value)
+                    {
+                        activeCount++;
+                    }
+                }
+
+                float progress = (float)activeCount / (activeCount + kv.Value.GetPoolSize());
+
+                UnityEditor.EditorGUI.ProgressBar(GUILayoutUtility.GetRect(100, GUI.skin.button.CalcHeight(new GUIContent("Wg"), 100)),
+                    progress,
+                    string.Format("{0} / {1} ({2:F2}%)", activeCount, activeCount + kv.Value.GetPoolSize(), progress));
+
+                UnityEditor.EditorGUILayout.EndHorizontal();
+                GUILayout.Space(2);
+            }
+        #endif // UNITY_EDITOR
         }
     }
 }

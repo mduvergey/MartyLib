@@ -89,5 +89,10 @@ namespace Marty
             }
             pool.Clear();
         }
+
+        public int GetPoolSize()
+        {
+            return pool.Count;
+        }
     }
 }
