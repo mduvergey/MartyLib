@@ -5,14 +5,15 @@ namespace Marty
 {
     public class ObjectPool<T>
     {
-        private Stack<T> pool;
-        private T template;
-        private int maxPoolSize;
         protected Func<T> createFunc;
         protected Action<T> onGet;
         protected Action<T> onRecycle;
         protected Action<T> onReturn;
         protected Action<T> onDestroy;
+
+        private Stack<T> pool;
+        private T template;
+        private int maxPoolSize;
 
         public ObjectPool(T template,
             Func<T> createFunc,
