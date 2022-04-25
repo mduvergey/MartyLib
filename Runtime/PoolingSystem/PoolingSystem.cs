@@ -55,6 +55,7 @@ namespace Marty
                 {
                     spawnedObjects.Add(obj, pool);
                 }
+                return obj;
             }
             return null;
         }
